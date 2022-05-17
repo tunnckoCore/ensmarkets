@@ -175,7 +175,7 @@ module.exports = (options) => {
 		const errors = {};
 		
 		const labels = opts.labels || Object.keys(json.data);
-		console.log(labels)
+		
 		opts.log && opts.labels && console.log('fixing holders for', category);
 		
 		await pMap(labels, mapper, { concurrency: 20, ...options });

@@ -64,7 +64,6 @@ module.exports = (options) => {
 	}
 	
 	function defaultCategories() {
-		const clubs = ['the999', '0xn', '0x99', '0x1k', '24h', '4-digit-hours', '4-digit-dates', 'hyphens', '10k', '0x10k'];
 		addCategory('The999', generateClub({ end: 1000, pad: 3 }), {save:true});
 
 		addCategory('0xN', generate0xDigits({ pad: 0, end: 10 }), {save:true});

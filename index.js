@@ -127,7 +127,15 @@ module.exports = (options) => {
 		const filepath = getPath(category, {snapshot: true});
 		
 		const json = JSON.parse(fs.readFileSync(filepath, 'utf-8'));
-		const errored = Object.keys(json.data).filter(x => typeof json.data[x] === 'string');
+		const errored = Object.keys(json.data).filter(x => {
+			if (typeof json.data[x] === 'string') {
+				return true
+			}
+			if (typeof json.data[x] === 'object' && json.data[x].owner === '0xundefined') {
+				return true
+			}
+			return false;
+		});
 		
 		return withHolders(category, {labels: errored, ...opts})
 	}
@@ -143,10 +151,10 @@ module.exports = (options) => {
 				
 				const $ = cheerio.load(htmlBody);
 				const link = $('#ContentPlaceHolder1_divOwner .d-block');
-				let addr = link.text();
+				let addr = link.text().trim();
 				
-				if (addr.includes('.eth')) {
-					addr = link.attr('href') || link.attr('title') || link.attr('data-original-title');
+				if (addr.includes('.eth') || addr.includes(':') || addr.includes(' ')) {
+					addr = link.attr('title') || link.attr('href') || link.attr('data-original-title');
 				}
 				
 				return '0x' + addr.replace('/address/', '').split('0x')[1];
@@ -167,13 +175,13 @@ module.exports = (options) => {
 		const errors = {};
 		
 		const labels = opts.labels || Object.keys(json.data);
-		
+		console.log(labels)
 		opts.log && opts.labels && console.log('fixing holders for', category);
 		
 		await pMap(labels, mapper, { concurrency: 20, ...options });
 		
 		async function mapper(label) {
-			const tokenId = json.data[label];
+			const tokenId = typeof json.data[label] === 'string' ? json.data[label] : json.data[label].id;
 			
 			let hasFailed = false;
 			let owner = null;

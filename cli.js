@@ -6,8 +6,9 @@ const ensUtils = require('./index');
 
 let [cmd, category, filepath] = process.argv.slice(2);
 
-const ens = ensUtils({log: true, onchain:false});
+const ens = ensUtils({log: true, date: '2022-05-16'});
 
+const allClubs = ['the999', '0xn', '0x99', '0x1k', '24h', '4-digit-hours', '4-digit-dates', 'hyphens', '10k', '0x10k', '100k', '6digits']
 
 async function main() {
 	if (cmd === 'init') {
@@ -35,7 +36,7 @@ async function main() {
 	if (cmd === 'sort-holders') {
 		category
 			? ens.sortHolders(category)
-			: ens.walkCategories((key) => ens.sortHolders(key), { exclude: [] });
+			: ens.walkCategories((key) => ens.sortHolders(key, {date: '2022-05-16'}), { exclude: [] });
 	}
 
 }

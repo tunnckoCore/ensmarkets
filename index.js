@@ -7,6 +7,7 @@ const path = require('path');
 const pMap = require('p-map');
 const ethers = require('ethers');
 const fetch = require('node-fetch');
+const arrIncludes = require('arr-includes');
 const keccak256 = require('js-sha3').keccak_256;
 
 const etherscanNFT = 'https://etherscan.io/nft/';
@@ -63,6 +64,7 @@ module.exports = (options) => {
 	}
 	
 	function defaultCategories() {
+		const clubs = ['the999', '0xn', '0x99', '0x1k', '24h', '4-digit-hours', '4-digit-dates', 'hyphens', '10k', '0x10k'];
 		addCategory('The999', generateClub({ end: 1000, pad: 3 }), {save:true});
 
 		addCategory('0xN', generate0xDigits({ pad: 0, end: 10 }), {save:true});
@@ -72,10 +74,6 @@ module.exports = (options) => {
 		addCategory('24h', generateClub({ pad: 4, end: 2360, is24h: true }), {save:true});
 		addCategory('4-digit-hours', generateClub({ pad: 4, end: 2360, isHours: true }), {save:true});
 		addCategory('4-digit-dates', generateClub({ pad: 4, start: 100, end: 1232, isDates: true }), {save:true});
-		
-		addCategory('10k', generateClub({ end: 10000, pad: 4 }), {save:true});
-		addCategory('0x10k', generate0xDigits({ end: 10000, pad: 4 }), {save:true});
-		
 		
 		// hyphens
 		// 520 = L-N and N-L
@@ -91,6 +89,9 @@ module.exports = (options) => {
 				.concat(hyphensLN),
 			{save:true},
 		);
+		
+		addCategory('10k', generateClub({ end: 10000, pad: 4 }), {save:true});
+		addCategory('0x10k', generate0xDigits({ end: 10000, pad: 4 }), {save:true});
 		
 		settings.fiveDigits && addCategory('100k', generateClub({ end: 100000, pad: 5 }), {save:true});
 		settings.sixDigits && addCategory('6digits', generateClub({ end: 1000000, pad: 6 }), {save:true});
@@ -109,10 +110,10 @@ module.exports = (options) => {
 	}
 	
 	async function walkCategories(mapper, options) {
-		const opts = {type: 'lite', exclude: [], date: DATE, ...options};
+		const opts = {exclude: [], date: DATE, ...options};
 		const clubs = fs.readdirSync('./categories')
 			.map(x => path.basename(x, path.extname(x)))
-			.filter(x => opts.exclude.indexOf(x) === -1);
+			.filter(x => !arrIncludes(opts.exclude, x));
 			
 		await pMap(clubs, async (category) => {
 			const filepath = getPath(category, opts);
@@ -165,7 +166,6 @@ module.exports = (options) => {
 		const holders = opts.labels && JSON.parse(fs.readFileSync(holdersPath, 'utf-8'));
 		const owners = opts.labels ? holders.data : {};
 		const errors = {};
-		json.info.expired = opts.labels ? holders.info.expired : 0;
 		
 		const labels = opts.labels || Object.keys(json.data);
 		
@@ -184,10 +184,12 @@ module.exports = (options) => {
 				owner = await CONTRACT.ownerOf(tokenId);
 			} catch(err) {
 				if (err.toString().includes('revert')) {
+					//console.log(label, tokenId, err);
 					hasFailed = true;
 					expired = true;
 				}
-				// get from etherscan.io/nft/<contract>/<tokenId>	
+				
+				// fallback from etherscan.io/nft/<contract>/<tokenId>	
 				try {
 					owner = await fetchOwner(tokenId, label);
 					hasFailed = false;
@@ -201,12 +203,16 @@ module.exports = (options) => {
 			opts.log && console.log(expired ? 'EXPIRED' : '', label, owner);
 			
 			json.data[label] = hasFailed ? tokenId : { id: tokenId, label, name: label + '.eth', owner }
+			
+			/* @todo
+			 * 
 			if (expired) {
 				json.info.expired += 1;
 				if (!hasFailed) {
 					json.data[label].expired = true;
 				}
 			}
+			*/
 			if (owner) {
 				owners[owner] = owners[owner] || [];
 				owners[owner].push(label);
@@ -258,8 +264,9 @@ module.exports = (options) => {
 }
 
 module.exports.sortHolders = sortHolders;
-function sortHolders(category) {
-	const date = new Date().toISOString().slice(0, 10);
+function sortHolders(category, options) {
+	const opts = {...options};
+	const date = opts.date || new Date().toISOString().slice(0, 10);
 	const holdersPath = getFilepath(category, {date, snapshot: true, type: 'holders'})
 	const holders = JSON.parse(fs.readFileSync(holdersPath, 'utf-8'));
 	const data = {};
